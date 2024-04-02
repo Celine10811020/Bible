@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
+
+  <title>Bible</title>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.5.9/p5.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.5.9/addons/p5.dom.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.5.9/addons/p5.sound.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/4.9.1/firebase.js"></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+
+  <link href="style.css" rel="stylesheet" type="text/css">
+</head>
+
+<body>
+  <h1 align="center"> Bible </h1>
+
+  <div class="firstLayer">
+    <details>
+      <summary> 筆記 </summary>
+      <div class="secondLayer">
+        <details>
+          <summary> 依經節分 </summary>
+          <div class="thirdLayer">
+            <details>
+              <summary> 創世紀 </summary>
+              <div class="forthLayer">
+
+              </div>
+            </details>
+            <details>
+              <summary> 申命記 </summary>
+              <div class="forthLayer">
+
+              </div>
+            </details>
+            <details>
+              <summary> 撒上 8 1~9 </summary>
+              <div class="forthLayer">
+
+              </div>
+            </details>
+          </div>
+        </details>
+      </div>
+    </details>
+  </div>
+</body>
+
+<script>
+  $(document).bind("contextmenu copy selectstart", function() {
+    return false;
+  });
+</script>
+<script src="main.js"></script>
+
+</html>
