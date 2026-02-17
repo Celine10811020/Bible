@@ -1,8 +1,51 @@
+async function sha256(str) {
+  const buf = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(str)
+  );
+  return [...new Uint8Array(buf)]
+    .map(x => x.toString(16).padStart(2, "0"))
+    .join("");
+}
+
 document.addEventListener("DOMContentLoaded", () => {
-  const BASE = "https://celine10811020.github.io/Bible/Notes/";
+
+  const BASE_ROOT = "https://celine10811020.github.io/Bible/";
+  const PASSWORD_HASH = "055811d58f30272e88805d8025ee125602afd9b710922dea2e121614330b649c";
+  let thoughtUnlocked = false;
+
   const searchBox = document.getElementById("searchBox");
   const clearBtn = document.getElementById("clearBtn");
   const resultInfo = document.getElementById("resultInfo");
+
+  function getBasePath(note) {
+    const topSummary = note.details
+      .closest(".firstLayer > details")
+      ?.querySelector(":scope > summary")
+      ?.textContent.trim();
+
+    if (topSummary === "心得") {
+      return BASE_ROOT + "Thought/";
+    }
+    return BASE_ROOT + "Notes/";
+  }
+
+  async function ensureThoughtUnlocked() {
+    if (thoughtUnlocked) return true;
+
+    const pwd = prompt("心得內容，請輸入密碼");
+    if (pwd === null) return false;
+
+    const hashed = await sha256(pwd);
+
+    if (hashed === PASSWORD_HASH) {
+      thoughtUnlocked = true;
+      return true;
+    } else {
+      alert("密碼錯誤");
+      return false;
+    }
+  }
 
   const leafDetails = Array.from(document.querySelectorAll("details"))
     .filter(d => d.querySelector(":scope > .forthLayer") && d.querySelector(":scope > summary"));
@@ -11,6 +54,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const summaryEl = d.querySelector(":scope > summary");
     const forthEl = d.querySelector(":scope > .forthLayer");
     const title = summaryEl.textContent.trim();
+
     return {
       details: d,
       summaryEl,
@@ -25,7 +69,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   async function loadNoteContent(note) {
     if (note.loaded) return note.content ?? "";
-    const url = BASE + encodeURIComponent(note.title) + ".txt";
+
+    const base = getBasePath(note);
+    const url = base + encodeURIComponent(note.title) + ".txt";
 
     try {
       const res = await fetch(url, { cache: "no-cache" });
@@ -52,8 +98,20 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   notes.forEach(note => {
-    note.details.addEventListener("toggle", () => {
+    note.details.addEventListener("toggle", async () => {
       if (!note.details.open) return;
+
+      const isThought = getBasePath(note).includes("/Thought/");
+
+      if (isThought && !thoughtUnlocked) {
+        const ok = await ensureThoughtUnlocked();
+        if (!ok) {
+          note.details.open = false;
+          return;
+        }
+      }
+
+
       if (note.forthEl.dataset.loaded === "1") return;
       loadNoteContent(note);
     });
@@ -77,25 +135,26 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function updateParentVisibility() {
     const allDetails = Array.from(document.querySelectorAll("details"));
-    const rootDetails = document.querySelector(".firstLayer > details");
+    const rootDetailsList = Array.from(document.querySelectorAll(".firstLayer > details"));
 
     const leafSet = new Set(notes.map(n => n.details));
 
+    // 先顯示所有非 leaf
     allDetails.forEach(d => {
-      if (d === rootDetails) return;
+      if (rootDetailsList.includes(d)) return;
       if (leafSet.has(d)) return;
       d.classList.remove("is-hidden");
     });
 
     allDetails.forEach(d => {
-      if (d === rootDetails) return;
+      if (rootDetailsList.includes(d)) return;
       if (leafSet.has(d)) return;
 
-      const descendantsLeaf = notes.filter(n => d.contains(n.details));
-      if (descendantsLeaf.length === 0) return;
+      const anyVisibleLeaf = notes.some(n =>
+        d.contains(n.details) && !n.details.classList.contains("is-hidden")
+      );
 
-      const anyVisible = descendantsLeaf.some(n => !n.details.classList.contains("is-hidden"));
-      if (!anyVisible) d.classList.add("is-hidden");
+      if (!anyVisibleLeaf) d.classList.add("is-hidden");
     });
   }
 
@@ -127,9 +186,16 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
 
-    for (const note of pendingContent) {
-      const text = await loadNoteContent(note);
-      const hitContent = (note.contentLower ?? text.toLowerCase()).includes(qLower);
+    const safeToLoad = pendingContent.filter(note => {
+      const isThought = getBasePath(note).includes("/Thought/");
+      if (!isThought) return true;
+      return thoughtUnlocked;
+    });
+
+    await Promise.all(safeToLoad.map(loadNoteContent));
+
+    for (const note of safeToLoad) {
+      const hitContent = (note.contentLower ?? "").includes(qLower);
       if (hitContent) matched.push(note);
     }
 
